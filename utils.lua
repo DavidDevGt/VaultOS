@@ -61,6 +61,96 @@ function Utils:getConnectedChests()
     return chests
 end
 
+function Utils:getStorageInfo()
+    local chests = self:getConnectedChests()
+    local totalSlots = 0
+    local usedSlots = 0
+    local chestStates = {}
+
+    for _, chest in ipairs(chests) do
+        local chestName = peripheral.getName(chest)
+        local chestSize = chest.size()
+        local itemCount = #chest.list()
+        totalSlots = totalSlots + chestSize
+        usedSlots = usedSlots + itemCount
+
+        table.insert(chestStates, {
+            name = chestName,
+            connected = true,
+            itemCount = itemCount,
+            chestSize = chestSize,
+            percentFull = math.floor((itemCount / chestSize) * 100)
+        })
+    end
+
+    return {
+        totalSlots = totalSlots,
+        usedSlots = usedSlots,
+        chestCount = #chests,
+        chestStates = chestStates
+    }
+end
+
+Utils.cache = {
+    mostCommonItems = nil,
+    lastUpdated = 0,
+    cacheDuration = 30  -- Duración en segundos para actualizar la caché
+}
+
+function Utils:getMostCommonItems(limit)
+    local currentTime = os.epoch("utc") / 1000
+    
+    if self.cache.mostCommonItems and (currentTime - self.cache.lastUpdated) < self.cache.cacheDuration then
+        return self.cache.mostCommonItems  -- Devolver la caché si aún es válida
+    end
+
+    -- Si la caché ha expirado, recargar los datos
+    local itemCounts = {}
+    local chests = self:getConnectedChests()
+    
+    -- Recorrer todos los cofres y contar los items
+    for _, chest in pairs(chests) do
+        local items = chest.list()
+        for _, item in pairs(items) do
+            local itemName = item.name
+            if itemCounts[itemName] then
+                itemCounts[itemName] = itemCounts[itemName] + item.count
+            else
+                itemCounts[itemName] = item.count
+            end
+        end
+    end
+
+    local mostCommonItems = {}
+    local minCountIndex = 1
+
+    for name, count in pairs(itemCounts) do
+        if #mostCommonItems < limit then
+            mostCommonItems[#mostCommonItems + 1] = { name = name, count = count }
+            if count < mostCommonItems[minCountIndex].count then
+                minCountIndex = #mostCommonItems
+            end
+        elseif count > mostCommonItems[minCountIndex].count then
+            mostCommonItems[minCountIndex] = { name = name, count = count }
+
+            minCountIndex = 1
+            for i = 2, #mostCommonItems do
+                if mostCommonItems[i].count < mostCommonItems[minCountIndex].count then
+                    minCountIndex = i
+                end
+            end
+        end
+    end
+
+    table.sort(mostCommonItems, function(a, b) return a.count > b.count end)
+
+    -- Actualizar la caché con los nuevos resultados
+    self.cache.mostCommonItems = mostCommonItems
+    self.cache.lastUpdated = currentTime
+
+    return mostCommonItems
+end
+
 function Utils:showLoadingScreen()
     term.clear()
     term.setCursorPos(1, 1)
