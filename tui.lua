@@ -49,7 +49,7 @@ end
 function TUI:displayHeader()
     term.clear()
     local width, _ = term.getSize()
-    local headerText = " Sistema de Almacenamiento Central "
+    local headerText = " VaultOS "
     local line = string.rep("-", width)
 
     self:setColor(self.colors.cyan)
