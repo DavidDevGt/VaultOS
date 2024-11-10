@@ -1,3 +1,5 @@
+-- startup.lua
+
 local Utils = require("utils")
 local utils = Utils:new()
 
@@ -14,10 +16,13 @@ local storage = Storage:new(utils)
 local Dashboard = require("dashboard")
 local dashboard = Dashboard:new(utils)
 
-local TUI = require("tui")
-local tui = TUI:new(storage)
-
 local FTS = require("fts")
+
+-- Cargar configuración antes de crear TUI
+local config = utils:loadData("config.txt")
+
+local TUI = require("tui")
+local tui = TUI:new(storage, config)  -- Pasar la configuración aquí
 
 local function initializationTask()
     _G.loadingMessage = "Verificando configuracion..."
@@ -33,7 +38,8 @@ local function initializationTask()
     end
 
     _G.loadingMessage = "Cargando configuracion..."
-    local config = utils:loadData("config.txt")
+    -- Ya cargamos la configuración, no es necesario volver a cargarla
+    -- local config = utils:loadData("config.txt")
 
     _G.loadingMessage = "Detectando cofres conectados..."
     local chests = utils:getConnectedChests()
@@ -51,7 +57,8 @@ local function initializationTask()
     sleep(1)
     _G.initializationComplete = true
 
-    _G.config = config
+    -- No es necesario asignar config a una variable global
+    -- _G.config = config
 end
 
 local function main()
@@ -63,7 +70,8 @@ local function main()
         initializationTask
     )
 
-    local config = _G.config
+    -- Ya tenemos la configuración cargada
+    -- local config = _G.config
 
     parallel.waitForAny(
         function()

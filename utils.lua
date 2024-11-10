@@ -104,49 +104,26 @@ function Utils:getMostCommonItems(limit)
         return self.cache.mostCommonItems  -- Devolver la caché si aún es válida
     end
 
-    -- Si la caché ha expirado, recargar los datos
+    -- Recargar datos si la caché ha expirado
     local itemCounts = {}
     local chests = self:getConnectedChests()
-    
-    -- Recorrer todos los cofres y contar los items
+
     for _, chest in pairs(chests) do
         local items = chest.list()
         for _, item in pairs(items) do
             local itemName = item.name
-            if itemCounts[itemName] then
-                itemCounts[itemName] = itemCounts[itemName] + item.count
-            else
-                itemCounts[itemName] = item.count
-            end
+            itemCounts[itemName] = (itemCounts[itemName] or 0) + item.count
         end
     end
 
     local mostCommonItems = {}
-    local minCountIndex = 1
-
     for name, count in pairs(itemCounts) do
-        if #mostCommonItems < limit then
-            mostCommonItems[#mostCommonItems + 1] = { name = name, count = count }
-            if count < mostCommonItems[minCountIndex].count then
-                minCountIndex = #mostCommonItems
-            end
-        elseif count > mostCommonItems[minCountIndex].count then
-            mostCommonItems[minCountIndex] = { name = name, count = count }
-
-            minCountIndex = 1
-            for i = 2, #mostCommonItems do
-                if mostCommonItems[i].count < mostCommonItems[minCountIndex].count then
-                    minCountIndex = i
-                end
-            end
-        end
+        table.insert(mostCommonItems, { name = name, count = count })
     end
 
     table.sort(mostCommonItems, function(a, b) return a.count > b.count end)
-
-    -- Actualizar la caché con los nuevos resultados
     self.cache.mostCommonItems = mostCommonItems
-    self.cache.lastUpdated = currentTime
+    self.cache.lastUpdated = currentTime  -- Actualizar `lastUpdated`
 
     return mostCommonItems
 end
