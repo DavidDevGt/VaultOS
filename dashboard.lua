@@ -3,6 +3,8 @@ local Grid = require("grid")
 local Dashboard = {}
 Dashboard.__index = Dashboard
 
+local TEXT_SCALE = 1
+
 function Dashboard:new(UtilsInstance)
     local self = setmetatable({}, Dashboard)
     self.utils = UtilsInstance
@@ -106,11 +108,11 @@ function Dashboard:drawGeneralTab(grid, startRow)
     local chestCount = storageInfo.chestCount
 
     self.utils:getMostCommonItems(3)
-    
+
     local status, statusColor = self:getSystemStatus(percentUsed)
     grid.monitor.setTextColor(statusColor)
     grid:writeInCell(startRow, 1, string.format("Estado: %s", status), "center", true, 5)
-    
+
     grid.monitor.setTextColor(self.colors.text)
 
     local statsText = string.format(
@@ -121,7 +123,7 @@ function Dashboard:drawGeneralTab(grid, startRow)
         percentUsed,
         self:formatUptime()
     )
-    
+
     grid:writeInCell(startRow + 1, 1, statsText, "center", true, 5)
 
     -- Dibujar barra de progreso
@@ -149,7 +151,7 @@ function Dashboard:updateDashboard()
     local monitor = peripheral.wrap(config.monitor)
     self:clearMonitor(monitor)
 
-    monitor.setTextScale(0.5)
+    monitor.setTextScale(TEXT_SCALE)
     monitor.setCursorBlink(false)
 
     local grid = Grid:new(monitor, 5, 5, 0)

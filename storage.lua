@@ -98,42 +98,97 @@ end
 
 function Storage:storeItems(notify, showProgress)
     local config = self.utils:loadData("config.txt")
-    local centralChest = peripheral.wrap(config.centralChest)
-    if not centralChest then
-        notify("Error: No se pudo encontrar el cofre central.")
+
+    if not config then
+        log("Error: No se pudo cargar la configuración desde config.txt.")
+        notify("Error: Configuración no encontrada.")
         return
     end
 
+    local centralChest = peripheral.wrap(config.centralChest)
+    if not centralChest then
+        local errorMsg = "Error: No se pudo encontrar el cofre central especificado en config.centralChest (" .. tostring(config.centralChest) .. ")."
+        log(errorMsg)
+        notify("Error: No se pudo encontrar el cofre central.")
+        return
+    end
+    log("Cofre central encontrado: " .. config.centralChest)
+
     local items = centralChest.list()
-    local totalItems = #items
+    if not items then
+        local errorMsg = "Error: No se pudieron listar los items del cofre central (" .. config.centralChest .. ")."
+        log(errorMsg)
+        notify("Error: No se pudieron listar los items del cofre central.")
+        return
+    end
+    log("Listado de items del cofre central obtenido correctamente.")
+
+    local totalItems = 0
+    for _ in pairs(items) do totalItems = totalItems + 1 end
     local transferredItems = 0
 
     for slot, item in pairs(items) do
         local itemDetail = self:getItemDetail(centralChest, slot)
         if itemDetail then
             local category = self:categorizeItem(itemDetail.name)
-            local targetChests = category and config.categories[category] or config.categories["randomItems"]
+            if not category then
+                log("Advertencia: El item '" .. itemDetail.name .. "' no pertenece a ninguna categoría definida. Se clasificará como 'randomItems'.")
+                category = "randomItems"
+            else
+                log("Item '" .. itemDetail.name .. "' categorizado como '" .. category .. "'.")
+            end
+
+            local targetChests = config.categories[category] or config.categories["randomItems"]
+            if not targetChests then
+                local errorMsg = "Error: No se encontraron cofres para la categoría '" .. category .. "'."
+                log(errorMsg)
+                notify("Error: No hay cofres definidos para la categoría '" .. category .. "'.")
+                goto continue  -- Salta al siguiente item
+            end
+
             local transferred = 0
+            local transferSuccess = false
 
             for _, chestName in ipairs(targetChests) do
                 local targetChest = peripheral.wrap(chestName)
                 if targetChest then
-                    transferred = centralChest.pushItems(peripheral.getName(targetChest), slot)
-                    self:updateChestData(peripheral.getName(targetChest), itemDetail.name, transferred)
-                    if transferred > 0 then
-                        break
+                    log("Intentando transferir " .. itemDetail.count .. " de '" .. itemDetail.name .. "' al cofre '" .. chestName .. "'.")
+                    local success, err = pcall(function()
+                        transferred = centralChest.pushItems(peripheral.getName(targetChest), slot)
+                    end)
+                    if not success then
+                        log("Error al transferir items al cofre '" .. chestName .. "': " .. tostring(err))
+                        notify("Error al transferir items al cofre '" .. chestName .. "'.")
+                    else
+                        if transferred > 0 then
+                            self:updateChestData(peripheral.getName(targetChest), itemDetail.name, transferred)
+                            log("Transferidos " .. transferred .. " de '" .. itemDetail.name .. "' al cofre '" .. chestName .. "'.")
+                            transferSuccess = true
+                            break  -- Salir del ciclo de cofres si la transferencia fue exitosa
+                        else
+                            log("No se pudieron transferir items al cofre '" .. chestName .. "'. Intentando con el siguiente cofre.")
+                        end
                     end
+                else
+                    log("Error: No se pudo envolver el cofre '" .. chestName .. "'. Verifica que esté conectado correctamente.")
                 end
             end
 
-            if transferred == 0 then
-                notify("Todos los cofres de la categoría " .. (category or "randomItems") .. " están llenos.")
+            if not transferSuccess then
+                local warningMsg = "Todos los cofres de la categoría '" .. (category or "randomItems") .. "' están llenos o no accesibles. No se pudo transferir '" .. itemDetail.name .. "'."
+                log(warningMsg)
+                notify(warningMsg)
             end
 
             transferredItems = transferredItems + 1
             showProgress(transferredItems, totalItems)
+        else
+            log("Advertencia: Detalles del item en el slot " .. tostring(slot) .. " del cofre central son inválidos o están incompletos.")
         end
+        ::continue::
     end
+
+    log("Proceso de almacenamiento de items completado. Total de items procesados: " .. transferredItems .. "/" .. totalItems .. ".")
 end
 
 function Storage:retrieveItems(itemName, count, notify, showProgress)

@@ -1,0 +1,9 @@
+
+*.lua text eol=lf
+__categories.txt text eol=lf
+__config.txt text eol=lf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.zip binary
