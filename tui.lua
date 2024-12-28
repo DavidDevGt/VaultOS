@@ -1,4 +1,3 @@
--- tui.lua (versión actualizada con limpieza de terminal)
 local TUI = {}
 TUI.__index = TUI
 

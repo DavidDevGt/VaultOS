@@ -1,6 +1,14 @@
--- fts.lua
-
 local Utils = require("utils")
+
+-- globales
+local currentLine = 1
+
+local function printWithCursor(text)
+    term.setCursorPos(1, currentLine)
+    print(text)
+    currentLine = currentLine + 1
+end
+
 
 local function paginado(lista, elementosPorPagina, titulo)
     elementosPorPagina = elementosPorPagina or 10
@@ -11,7 +19,7 @@ local function paginado(lista, elementosPorPagina, titulo)
     local paginaActual = 1
 
     while true do
-        term.clear()
+        term.clear() -- Limpia toda la pantalla
         term.setCursorPos(1, 1)
         if titulo then
             print(titulo)
@@ -27,25 +35,19 @@ local function paginado(lista, elementosPorPagina, titulo)
             print(i .. ". " .. currentList[i])
         end
 
+        Utils:clearLineAt(currentLine + 1)
         print("\n[N] Siguiente pagina | [P] Pagina anterior | [S] Seleccionar elemento | [B] Buscar | [C] Cancelar")
         print("Ingrese una opcion:")
-        local input = read()
 
-        if input:lower() == "n" then
-            if paginaActual < totalPaginas then
-                paginaActual = paginaActual + 1
-            else
-                print("Ya estas en la ultima pagina. Presiona ENTER para continuar.")
-                read()
-            end
-        elseif input:lower() == "p" then
-            if paginaActual > 1 then
-                paginaActual = paginaActual - 1
-            else
-                print("Ya estas en la primera pagina. Presiona ENTER para continuar.")
-                read()
-            end
-        elseif input:lower() == "s" then
+        local input = read():lower()
+        term.clear() -- Limpia toda la pantalla
+        term.setCursorPos(1, 1)
+
+        if input == "n" and paginaActual < totalPaginas then
+            paginaActual = paginaActual + 1
+        elseif input == "p" and paginaActual > 1 then
+            paginaActual = paginaActual - 1
+        elseif input == "s" then
             print("Ingresa el numero del elemento a seleccionar:")
             local seleccion = tonumber(read())
             if seleccion and currentList[seleccion] then
@@ -55,39 +57,42 @@ local function paginado(lista, elementosPorPagina, titulo)
                     end
                 end
             else
+                Utils:clearLineAt(currentLine) -- Limpia mensaje de error
                 print("Seleccion invalida. Presiona ENTER para intentar de nuevo.")
                 read()
             end
-        elseif input:lower() == "b" then
-            print("Ingresa el nombre o parte del nombre del cofre a buscar:")
+        elseif input == "b" then
+            print("Ingresa el termino a buscar:")
             local termino = read():lower()
             if termino == "" then
                 currentList = fullList
             else
-                local filtrados = {}
+                currentList = {}
                 for _, item in ipairs(fullList) do
-                    if string.find(item:lower(), termino) then
-                        table.insert(filtrados, item)
+                    if string.find(item:lower(), termino, 1, true) then
+                        table.insert(currentList, item)
                     end
                 end
-                if #filtrados == 0 then
-                    print("No se encontraron cofres que coincidan con el termino. Presiona ENTER para continuar.")
+                if #currentList == 0 then
+                    Utils:clearLineAt(currentLine) -- Limpiar el mensaje
+                    print("No se encontraron resultados. Presiona ENTER para continuar.")
                     read()
-                else
-                    currentList = filtrados
-                    totalElementos = #currentList
-                    totalPaginas = math.ceil(totalElementos / elementosPorPagina)
-                    paginaActual = 1
+                    currentList = fullList
                 end
             end
-        elseif input:lower() == "c" then
+            totalElementos = #currentList
+            totalPaginas = math.ceil(totalElementos / elementosPorPagina)
+            paginaActual = 1
+        elseif input == "c" then
             return nil
         else
-            print("Opcion no reconocida. Presiona ENTER para intentar de nuevo.")
+            Utils:clearLineAt(currentLine) -- Limpia mensaje de error
+            print("Opcion no valida. Presiona ENTER para intentar de nuevo.")
             read()
         end
     end
 end
+
 
 local function firstTimeSetup(utils)
     term.clear()
@@ -99,7 +104,7 @@ local function firstTimeSetup(utils)
     print("Presione ENTER para continuar...")
     read()
 
-    -- Detectar perifericos conectados
+    -- Detectar perifericos de la red
     local peripherals = peripheral.getNames()
     local chests = {}
     local monitors = {}

@@ -13,6 +13,11 @@ function Utils:new()
     return self
 end
 
+function Utils:clearLineAt(line)
+    term.setCursorPos(1, line)
+    term.clearLine()
+end
+
 function Utils:saveAllChestData(data)
     local file = fs.open(self.compressedDataFile, "w")
     file.write(textutils.serializeJSON(data))
@@ -130,33 +135,37 @@ end
 
 function Utils:showLoadingScreen()
     term.clear()
-    term.setCursorPos(1, 1)
     local width, height = term.getSize()
-    local loadingText = "Inicializando..."
-    local message = ""
-    local animation = { "-", "\\", "|", "/" }
+    local loadingText = "Inicializando el sistema..."
+    local animation = { "[-]", "[\\]", "[|]", "[/]" }
     local animIndex = 1
 
     while not _G.initializationComplete do
+        term.clear()
+        term.setCursorPos(1, 1)
+        local progressMessage = _G.loadingMessage or ""
+        
+        -- Title
         term.setCursorPos(math.floor((width - #loadingText) / 2) + 1, math.floor(height / 2) - 2)
-        term.clearLine()
         term.write(loadingText)
 
-        term.setCursorPos(2, math.floor(height / 2))
+        -- Progress msg
+        term.setCursorPos(1, math.floor(height / 2))
         term.clearLine()
-        term.write(message)
+        term.setCursorPos(math.floor((width - #progressMessage) / 2) + 1, math.floor(height / 2))
+        term.write(progressMessage)
 
-        term.setCursorPos(width - 2, height - 1)
+        -- Loader
+        term.setCursorPos(math.floor(width / 2) - 1, math.floor(height / 2) + 2)
         term.write(animation[animIndex])
         animIndex = (animIndex % #animation) + 1
 
         sleep(0.1)
-
-        message = _G.loadingMessage or ""
     end
 
     term.clear()
     term.setCursorPos(1, 1)
 end
+
 
 return Utils

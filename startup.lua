@@ -1,5 +1,3 @@
--- startup.lua
-
 local Utils = require("utils")
 local utils = Utils:new()
 
@@ -8,6 +6,7 @@ local function clearCompressedData()
     file.close()
 end
 
+-- limpiar data
 clearCompressedData()
 
 local Storage = require("storage")
@@ -18,16 +17,19 @@ local dashboard = Dashboard:new(utils)
 
 local FTS = require("fts")
 
--- Cargar configuración antes de crear TUI
+-- Cargar config
 local config = utils:loadData("config.txt")
 
 local TUI = require("tui")
-local tui = TUI:new(storage, config)  -- Pasar la configuración aquí
+local tui = TUI:new(storage, config)  -- Pasar config aquí
 
 local function initializationTask()
     _G.loadingMessage = "Verificando configuracion..."
+    sleep(1)
+
     if not fs.exists("config.txt") then
-        _G.loadingMessage = "Iniciando configuracion por primera vez..."
+        _G.loadingMessage = "Iniciando configuracion inicial..."
+        sleep(1)
         local success = FTS.firstTimeSetup(utils)
         if not success then
             _G.loadingMessage = "Error en configuracion inicial."
@@ -38,8 +40,7 @@ local function initializationTask()
     end
 
     _G.loadingMessage = "Cargando configuracion..."
-    -- Ya cargamos la configuración, no es necesario volver a cargarla
-    -- local config = utils:loadData("config.txt")
+    sleep(1)
 
     _G.loadingMessage = "Detectando cofres conectados..."
     local chests = utils:getConnectedChests()
@@ -51,14 +52,12 @@ local function initializationTask()
         _G.loadingMessage = "Actualizando cofres: " .. processedChests .. "/" .. totalChests
         local chestName = peripheral.getName(chest)
         storage:updateChestData(chestName, "", 0)
+        sleep(0.2) -- Simula un pequeño retraso para hacer más visible el progreso
     end
 
-    _G.loadingMessage = "Inicializacion completada."
-    sleep(1)
+    _G.loadingMessage = "Inicializacion completada. Cargando interfaz..."
+    sleep(2)
     _G.initializationComplete = true
-
-    -- No es necesario asignar config a una variable global
-    -- _G.config = config
 end
 
 local function main()
@@ -70,12 +69,9 @@ local function main()
         initializationTask
     )
 
-    -- Ya tenemos la configuración cargada
-    -- local config = _G.config
-
     parallel.waitForAny(
         function()
-            if config.monitor then
+            if config and config.monitor then
                 dashboard:updateDashboard()
             end
         end,

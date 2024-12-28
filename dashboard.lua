@@ -77,16 +77,19 @@ function Dashboard:formatUptime()
 end
 
 function Dashboard:updateClock(grid)
-    local monitor = grid.monitor
-    monitor.setTextColor(self.colors.title)
+    while true do
+        local monitor = grid.monitor
+        monitor.setTextColor(self.colors.title)
 
-    -- Escribe el título en la primera fila
-    local title = "=== VaultOS v1.0 ==="
-    local timeStr = textutils.formatTime(os.time(), true)
-    local dayStr = "Dia " .. os.day()
+        -- Escribe el título en la primera fila
+        local title = "=== VaultOS v1.0 ==="
+        local timeStr = textutils.formatTime(os.time(), true)
+        local dayStr = "Dia " .. os.day()
 
-    grid:writeInCell(1, 1, title, "center", true, 5)
-    grid:writeInCell(2, 1, string.format("%s | %s", timeStr, dayStr), "center", true, 5)
+        grid:writeInCell(1, 1, title, "center", true, 5)
+        grid:writeInCell(2, 1, string.format("%s | %s", timeStr, dayStr), "center", true, 5)
+        sleep(1) -- Actualización cada segundo
+    end
 end
 
 function Dashboard:formatLastUpdated(epochTime)
@@ -101,47 +104,42 @@ function Dashboard:formatLastUpdated(epochTime)
 end
 
 function Dashboard:drawGeneralTab(grid, startRow)
-    local storageInfo = self.utils:getStorageInfo()
-    local totalSlots = storageInfo.totalSlots
-    local usedSlots = storageInfo.usedSlots
-    local percentUsed = math.floor((usedSlots / totalSlots) * 100)
-    local chestCount = storageInfo.chestCount
+    while true do
+        local storageInfo = self.utils:getStorageInfo()
+        local totalSlots = storageInfo.totalSlots
+        local usedSlots = storageInfo.usedSlots
+        local percentUsed = math.floor((usedSlots / totalSlots) * 100)
+        local chestCount = storageInfo.chestCount
 
-    self.utils:getMostCommonItems(3)
+        local status, statusColor = self:getSystemStatus(percentUsed)
+        grid.monitor.setTextColor(statusColor)
+        grid:writeInCell(startRow, 1, string.format("Estado: %s", status), "center", true, 5)
 
-    local status, statusColor = self:getSystemStatus(percentUsed)
-    grid.monitor.setTextColor(statusColor)
-    grid:writeInCell(startRow, 1, string.format("Estado: %s", status), "center", true, 5)
+        grid.monitor.setTextColor(self.colors.text)
 
-    grid.monitor.setTextColor(self.colors.text)
+        local statsText = string.format(
+            "Slots: %s/%s | Cofres conectados: %d\nUso: %d%% | Uptime: %s",
+            self:formatNumber(usedSlots),
+            self:formatNumber(totalSlots),
+            chestCount,
+            percentUsed,
+            self:formatUptime()
+        )
 
-    local statsText = string.format(
-        "Slots: %s/%s | Cofres conectados: %d\nUso: %d%% | Uptime: %s",
-        self:formatNumber(usedSlots),
-        self:formatNumber(totalSlots),
-        chestCount,
-        percentUsed,
-        self:formatUptime()
-    )
+        grid:writeInCell(startRow + 1, 1, statsText, "center", true, 5)
 
-    grid:writeInCell(startRow + 1, 1, statsText, "center", true, 5)
+        -- Dibujar barra de progreso
+        self:drawProgressBar(grid, startRow + 2, 1, percentUsed, math.min(grid.width, grid.cellWidth * 5))
 
-    -- Dibujar barra de progreso
-    self:drawProgressBar(grid, startRow + 2, 1, percentUsed, math.min(grid.width, grid.cellWidth * 5))
-
-    if percentUsed >= 90 then
-        grid.monitor.setTextColor(self.colors.warning)
-        grid:writeInCell(startRow + 3, 1, "! ALERTA !", "center", true, 5)
+        if percentUsed >= 90 then
+            grid.monitor.setTextColor(self.colors.warning)
+            grid:writeInCell(startRow + 3, 1, "! ALERTA !", "center", true, 5)
+        end
+        sleep(5) -- Actualizar cada 5 segundos
     end
 end
 
-function Dashboard:updateDisplay()
-    local config = self.utils:loadData("config.txt")
-    local monitor = peripheral.wrap(config.monitor)
-    self:clearMonitor(monitor)
-
-    local grid = Grid:new(monitor, 5, 5, 0)
-
+function Dashboard:updateDisplay(grid)
     self:updateClock(grid)
     self:drawGeneralTab(grid, 3)
 end
@@ -156,16 +154,9 @@ function Dashboard:updateDashboard()
 
     local grid = Grid:new(monitor, 5, 5, 0)
 
-    -- Llamada inicial para mostrar el contenido desde el inicio
-    self:updateDisplay()
-
     parallel.waitForAny(
-        function()
-            while true do
-                self:updateClock(grid)
-                sleep(1)
-            end
-        end
+        function() self:updateClock(grid) end,
+        function() self:drawGeneralTab(grid, 3) end
     )
 end
 
